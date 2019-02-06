@@ -1,0 +1,7 @@
+[package]
+name = "max2-extractor"
+version = "0.1.0"
+authors = ["rafalp <kontakt@rpiton.com>"]
+edition = "2018"
+
+[dependencies]
