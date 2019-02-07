@@ -1,2 +1,7 @@
 /target
 **/*.rs.bk
+/MAX2.RES
+
+# System files
+.DS_Store
+Thumbs.db
