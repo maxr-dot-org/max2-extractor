@@ -1,11 +1,11 @@
 use std::fs::File;
 use std::io::{Read, Result, Seek, SeekFrom};
 use std::vec::Vec;
-use crate::utils::buf_to_le_u32;
+use crate::utils::{buf_to_le_u64};
 
 pub struct Directory {
-    pub offset: u32,
-    pub length: u32,
+    pub offset: u64,
+    pub length: u64,
 }
 
 pub fn read_directories(f: &mut File, d: &mut Vec<Directory>) -> Result<()> {
@@ -29,13 +29,13 @@ fn read_directory(f: &mut File, d: &mut Vec<Directory>) -> Result<bool> {
     let mut length = [0; 4];
     f.read(&mut length)?;
 
-    let offset = buf_to_le_u32(&offset).unwrap();
-    let length = buf_to_le_u32(&length).unwrap();
+    let offset = buf_to_le_u64(&offset).unwrap();
+    let length = buf_to_le_u64(&length).unwrap();
     let directory = Directory { offset, length };
     d.push(directory);
 
     // Hop to directory end
-    let jump_to = (offset + length).into();
+    let jump_to = offset + length;
     f.seek(SeekFrom::Start(jump_to))?;
 
     // Keep reading directories
