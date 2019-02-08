@@ -4,12 +4,14 @@ use std::io::{Read, Result, Seek, SeekFrom};
 use std::path::PathBuf;
 use std::str;
 use std::vec::Vec;
-use max2_extractor::assets::{Asset, read_assets};
-use max2_extractor::directories::{Directory, read_directories};
+use max2_extractor::assets::{Asset, find_assets};
+use max2_extractor::directories::{Directory, find_directories};
 
 const FILE_NAME: &str = "MAX2";
 const FILE_EXT: &str = "RES";
 const FILE_HEADER: &str = "RES0";
+
+const ASSET_IMG: u32 = 1;
 
 fn main() -> Result<()> {
     let max2_res = max2_res_path();
@@ -20,17 +22,28 @@ fn main() -> Result<()> {
         panic!(error_message);
     }
 
-    let mut f = File::open(max2_res).expect("Could not open MAX2.RES");
-    check_file_header(&mut f)?;
+    let mut res_file = File::open(max2_res).expect("Could not open MAX2.RES");
+    check_file_header(&mut res_file)?;
 
-    // Jump to 6th byte where first assets directory starts
-    f.seek(SeekFrom::Start(6))?;
+    // Jump to 6th byte where assets directory starts
+    res_file.seek(SeekFrom::Start(6))?;
 
+    // Find directories
     let mut directories: Vec<Directory> = Vec::new();
-    read_directories(&mut f, &mut directories)?;
+    find_directories(&mut res_file, &mut directories)?;
 
+    // Find assets
     let mut assets: Vec<Asset> = Vec::new();    
-    read_assets(&mut f, &directories, &mut assets)?;
+    find_assets(&mut res_file, &directories, &mut assets)?;
+
+    // Extract assets
+    for asset in assets {
+        if asset.type_ == ASSET_IMG {
+            println!("{} (img)", asset.name);
+        } else {
+            println!("{} ({})", asset.name, asset.type_);
+        }
+    }
 
     Ok(())
 }
@@ -42,10 +55,10 @@ fn max2_res_path() -> PathBuf {
     path
 }
 
-fn check_file_header(f: &mut File) -> Result<()> {
+fn check_file_header(res_file: &mut File) -> Result<()> {
     // First 4 bytes should be "RES0" string
     let mut buffer = [0; 4];
-    f.read(&mut buffer)?;
+    res_file.read(&mut buffer)?;
 
     let header = str::from_utf8(&buffer).expect("Could not read header");
     assert_eq!(header, FILE_HEADER, "Unrecognized file type");

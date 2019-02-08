@@ -8,36 +8,31 @@ pub struct Directory {
     pub length: u64,
 }
 
-pub fn read_directories(f: &mut File, d: &mut Vec<Directory>) -> Result<()> {
-    let mut done = false;
-    while !done {
-        done = read_directory(f, d)?;
-    }
+pub fn find_directories(res_file: &mut File, directories: &mut Vec<Directory>) -> Result<()> {
+    read_directory_header(res_file, directories)?;
     Ok(())
 }
 
-fn read_directory(f: &mut File, d: &mut Vec<Directory>) -> Result<bool> {
+fn read_directory_header(res_file: &mut File, directories: &mut Vec<Directory>) -> Result<bool> {
     // Directory header is two 4 byte long unsigned little endian integers
-    // First number is offset where data starts
-    let mut offset = [0; 4];
-    let read_len = f.read(&mut offset)?;
-    if read_len != 4 {
-        return Ok(false)
+    let mut header = [0; 8];
+    let read_len = res_file.read(&mut header)?;
+    if read_len != 8 {
+        return Ok(true)
     }
 
+    // First 4 bytes is offset of directory data
+    let offset = buf_to_le_u64(&header[0..4]).unwrap();
     // Second number is length of the data
-    let mut length = [0; 4];
-    f.read(&mut length)?;
+    let length = buf_to_le_u64(&header[4..8]).unwrap();
 
-    let offset = buf_to_le_u64(&offset).unwrap();
-    let length = buf_to_le_u64(&length).unwrap();
     let directory = Directory { offset, length };
-    d.push(directory);
+    directories.push(directory);
 
     // Hop to directory end
     let jump_to = offset + length;
-    f.seek(SeekFrom::Start(jump_to))?;
+    res_file.seek(SeekFrom::Start(jump_to))?;
 
     // Keep reading directories
-    Ok(true)
+    Ok(false)
 }
