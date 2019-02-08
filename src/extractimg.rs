@@ -1,6 +1,7 @@
 use std::fs::{File};
-use std::io::{Read, Result, Seek, SeekFrom, Write};
+use std::io::{Read, Result, Seek, SeekFrom};
 use std::path::PathBuf;
+use image::{ImageBuffer, Rgb, RgbImage};
 use crate::assets::Asset;
 use crate::decompress::decompress_data;
 use crate::utils::buf_to_le_u32;
@@ -17,7 +18,7 @@ pub fn extract_img_asset(res_file: &mut File, dst_dir: &PathBuf, asset: &Asset) 
     }
 
     // Jump to asset start + 4 bytes of trash
-    res_file.seek(SeekFrom::Start(asset.offset + UNKNOWN_LEN))?;
+    res_file.seek(SeekFrom::Start(asset.offset + (UNKNOWN_LEN as u64)))?;
 
     // Read 2 + 2 + (3 * 256) bytes of asset header
     let mut header = [0;HEADER_LEN];
@@ -34,9 +35,21 @@ pub fn extract_img_asset(res_file: &mut File, dst_dir: &PathBuf, asset: &Asset) 
     let data_len = (asset.length as usize) - HEADER_LEN - UNKNOWN_LEN;
     let image_data = decompress_data(res_file, data_len);
 
-    // Write file data
-    //let mut output = File::create(path)?;
-    //output.write_all(&data.as_mut_slice())?;
+    // Create image
+    let mut img: RgbImage = ImageBuffer::new(width, height);
+
+    // Iterate over the coordinates and pixels of the image
+    for (x, y, pixel) in img.enumerate_pixels_mut() {
+        let src_pixel = (x + (y * width)) as usize;
+        let palette_color = (image_data[src_pixel] as usize) * 3;
+        let red = palette[palette_color];
+        let green = palette[palette_color + 1];
+        let blue = palette[palette_color + 2];
+        *pixel = Rgb([red, green, blue]);
+    }
+
+    // Save image file
+    img.save(path)?;
 
     Ok(true)
 }
