@@ -1,7 +1,7 @@
 use std::fs::File;
 use std::io::{Read, Result, Seek, SeekFrom};
 use std::vec::Vec;
-use crate::utils::{buf_to_le_u64};
+use crate::utils::buf_to_le_u64;
 
 pub struct Directory {
     pub offset: u64,

@@ -1,5 +1,6 @@
 /target
 **/*.rs.bk
+/extracted
 /MAX2.RES
 
 # System files

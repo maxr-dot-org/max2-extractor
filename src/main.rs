@@ -1,15 +1,18 @@
 use std::env::current_dir;
-use std::fs::File;
+use std::fs::{File, create_dir_all};
 use std::io::{Read, Result, Seek, SeekFrom};
 use std::path::PathBuf;
 use std::str;
 use std::vec::Vec;
 use max2_extractor::assets::{Asset, find_assets};
 use max2_extractor::directories::{Directory, find_directories};
+use max2_extractor::extractimg::extract_img_asset;
+use max2_extractor::extractraw::extract_raw_asset;
 
 const FILE_NAME: &str = "MAX2";
 const FILE_EXT: &str = "RES";
 const FILE_HEADER: &str = "RES0";
+const DST_DIRNAME: &str = "extracted";
 
 const ASSET_IMG: u32 = 1;
 
@@ -36,12 +39,22 @@ fn main() -> Result<()> {
     let mut assets: Vec<Asset> = Vec::new();    
     find_assets(&mut res_file, &directories, &mut assets)?;
 
+    // Create output directory
+    let dst_dir = dst_path();
+    if !dst_dir.is_dir() {
+        create_dir_all(dst_dir.as_path())?
+    }
+
     // Extract assets
     for asset in assets {
         if asset.type_ == ASSET_IMG {
-            println!("{} (img)", asset.name);
+            if extract_img_asset(&mut res_file, &dst_dir, &asset)? {
+                println!("Extracted: {}.bmp", asset.name);
+            }
         } else {
-            println!("{} ({})", asset.name, asset.type_);
+            if extract_raw_asset(&mut res_file, &dst_dir, &asset)? {
+                println!("Extracted: {}", asset.name);
+            }
         }
     }
 
@@ -64,4 +77,10 @@ fn check_file_header(res_file: &mut File) -> Result<()> {
     assert_eq!(header, FILE_HEADER, "Unrecognized file type");
 
     Ok(())
+}
+
+fn dst_path() -> PathBuf {
+    let mut path = current_dir().expect("Failed to find CHDIR");
+    path.push(&DST_DIRNAME);
+    path
 }
