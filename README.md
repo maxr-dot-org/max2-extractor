@@ -12,8 +12,8 @@ This project is both nostalgia trip and Rust learning exercise.
 Usage
 -----
 
-Build the executable and run it in directory containing the `MAX2.RES`.
+Build the executable and run it in directory containing the `MAX2.RES` and `MAX2.CAF` files.
 
-Utility will create new directory named `extracted`, and will extract files to it.
+Utility will create new directories named `res` and `caf`, and will extract files to it.
 
 Files in unknown formats will be extracted without extension.
