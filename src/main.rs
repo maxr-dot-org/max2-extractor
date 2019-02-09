@@ -6,6 +6,7 @@ use std::str;
 use std::vec::Vec;
 use max2_extractor::assets::{Asset, find_assets};
 use max2_extractor::directories::{Directory, find_directories};
+use max2_extractor::extractbmp::extract_bmp_asset;
 use max2_extractor::extractimg::extract_img_asset;
 use max2_extractor::extractraw::extract_raw_asset;
 use max2_extractor::extracttxt::extract_txt_asset;
@@ -14,8 +15,9 @@ const FILE_HEADER: &str = "RES0";
 const RES_DIRNAME: &str = "res";
 const CAF_DIRNAME: &str = "caf";
 
-const ASSET_IMG: u32 = 1;
+const ASSET_BMP: u32 = 1;
 const ASSET_STR: u32 = 4;
+const ASSET_IMG: u32 = 5;
 const ASSET_TXT: u32 = 7;
 const ASSET_SND: u32 = 8;
 
@@ -118,9 +120,13 @@ fn res0_assets(res_file: &mut File, assets: &mut Vec<Asset>) -> Result<()> {
 
 fn extract_assets(res_file: &mut File, dst_dir: &PathBuf, assets: &Vec<Asset>) -> Result<()> {
     for asset in assets {
-        if asset.type_ == ASSET_IMG {
-            if extract_img_asset(res_file, &dst_dir, &asset)? {
+        if asset.type_ == ASSET_BMP {
+            if extract_bmp_asset(res_file, &dst_dir, &asset)? {
                 println!("Extracted: {}.BMP", asset.name);
+            }
+        } else if asset.type_ == ASSET_IMG {
+            if extract_img_asset(res_file, &dst_dir, &asset)? && extract_raw_asset(res_file, &dst_dir, &asset)? {
+                println!("Extracted: {}.PNG", asset.name);
             }
         } else if asset.type_ == ASSET_STR || asset.type_ == ASSET_TXT {
             if extract_txt_asset(res_file, &dst_dir, &asset)? {
@@ -129,6 +135,8 @@ fn extract_assets(res_file: &mut File, dst_dir: &PathBuf, assets: &Vec<Asset>) -
         } else {
             if extract_raw_asset(res_file, &dst_dir, &asset)? {
                 println!("Extracted: {}", asset.name);
+            } else {
+                println!("Skipped: {}", asset.name);
             }
         }
     }

@@ -23,8 +23,7 @@ pub fn extract_txt_asset(res_file: &mut File, dst_dir: &PathBuf, asset: &Asset) 
 
 fn asset_path(dst_dir: &PathBuf, asset: &Asset) -> PathBuf {
     let mut path = dst_dir.to_path_buf();
-    let file_name = format!("{}_{}", asset.type_, asset.name);
-    path.push(&file_name);
+    path.push(&asset.name);
     path.set_extension("TXT");
     path
 }
