@@ -5,4 +5,5 @@ pub mod extractbmp;
 pub mod extractimg;
 pub mod extractraw;
 pub mod extracttxt;
+pub mod palette;
 pub mod utils;

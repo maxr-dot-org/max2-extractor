@@ -3,7 +3,7 @@ use std::io::{Read, Result, Seek, SeekFrom};
 use std::path::PathBuf;
 use image::{ImageBuffer, Rgba, RgbaImage};
 use crate::assets::Asset;
-use crate::decompress::decompress_data;
+use crate::palette::PALETTE;
 use crate::utils::buf_to_le_u32;
 
 // Asset header: 2 bytes + 2 bytes + 6 bytes
@@ -39,11 +39,16 @@ pub fn extract_img_asset(res_file: &mut File, dst_dir: &PathBuf, asset: &Asset) 
     // Iterate over the coordinates and pixels of the image
     for (x, y, pixel) in img.enumerate_pixels_mut() {
         let src_pixel = (x + (y * width)) as usize;
-        let color = image_data[src_pixel];
+        let color = image_data[src_pixel] as usize;
         if color == 0 {
             *pixel = Rgba([0, 0, 0, 0]);
         } else {
-            *pixel = Rgba([color, color, color, 255]);
+            *pixel = Rgba([
+                PALETTE[(color * 3)],
+                PALETTE[(color * 3) + 1],
+                PALETTE[(color * 3) + 2],
+                255
+            ]);
         }
     }
 
