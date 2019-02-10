@@ -19,7 +19,7 @@ const ASSET_BMP: u32 = 1;
 const ASSET_STR: u32 = 4;
 const ASSET_IMG: u32 = 5;
 const ASSET_TXT: u32 = 7;
-const ASSET_SND: u32 = 8;
+const ASSET_WAV: u32 = 8;
 
 fn main() -> Result<()> {
     extract_res().expect("Failed to extract MAX2.RES");
@@ -122,21 +122,28 @@ fn extract_assets(res_file: &mut File, dst_dir: &PathBuf, assets: &Vec<Asset>) -
     for asset in assets {
         if asset.type_ == ASSET_BMP {
             if extract_bmp_asset(res_file, &dst_dir, &asset)? {
-                //println!("Extracted: {}.BMP", asset.name);
+                println!("Extracted: {}.BMP", asset.name);
             }
         } else if asset.type_ == ASSET_IMG {
             if extract_img_asset(res_file, &dst_dir, &asset)? && extract_raw_asset(res_file, &dst_dir, &asset)? {
-                //println!("Extracted: {}.PNG", asset.name);
+                println!("Extracted: {}.PNG", asset.name);
             }
         } else if asset.type_ == ASSET_STR || asset.type_ == ASSET_TXT {
             if extract_txt_asset(res_file, &dst_dir, &asset)? {
-                //println!("Extracted: {}.TXT", asset.name);
+                println!("Extracted: {}.TXT", asset.name);
+            }
+        }  else if asset.type_ == ASSET_WAV {
+            // TODO: extract WAVs
+            if extract_raw_asset(res_file, &dst_dir, &asset)? {
+                println!("Extracted: {}", asset.name);
+            } else {
+                println!("Skipped: {}", asset.name);
             }
         } else {
             if extract_raw_asset(res_file, &dst_dir, &asset)? {
-                //println!("Extracted: {}", asset.name);
+                println!("Extracted: {}", asset.name);
             } else {
-                //println!("Skipped: {}", asset.name);
+                println!("Skipped: {}", asset.name);
             }
         }
     }

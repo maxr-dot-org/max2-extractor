@@ -3,7 +3,7 @@ use std::io::{Read, Result, Seek, SeekFrom};
 use std::path::PathBuf;
 use image::{ImageBuffer, Rgba, RgbaImage};
 use crate::assets::Asset;
-use crate::palette::PALETTE;
+use crate::palette::{PALETTE_MAX1, PALETTE_PTR};
 use crate::utils::buf_to_le_u32;
 
 // Asset header: 2 bytes + 2 bytes + 6 bytes
@@ -42,6 +42,7 @@ pub fn extract_img_asset(res_file: &mut File, dst_dir: &PathBuf, asset: &Asset) 
     let mut img: RgbaImage = ImageBuffer::new(width, height);
 
     let transparent = transparent_pixel(type_);
+    let palette = &select_palette(type_);
 
     // Iterate over the coordinates and pixels of the image
     for (x, y, pixel) in img.enumerate_pixels_mut() {
@@ -51,9 +52,9 @@ pub fn extract_img_asset(res_file: &mut File, dst_dir: &PathBuf, asset: &Asset) 
             *pixel = Rgba([0, 0, 0, 0]);
         } else {
             *pixel = Rgba([
-                PALETTE[(color * 3)],
-                PALETTE[(color * 3) + 1],
-                PALETTE[(color * 3) + 2],
+                palette[(color * 3)],
+                palette[(color * 3) + 1],
+                palette[(color * 3) + 2],
                 255
             ]);
         }
@@ -72,9 +73,16 @@ fn asset_path(dst_dir: &PathBuf, asset: &Asset) -> PathBuf {
     path
 }
 
-fn transparent_pixel(type_: u32) -> usize{
+fn transparent_pixel(type_: u32) -> usize {
     if type_ == TYPE_PTR {
         return 224;
     }
     0
+}
+
+fn select_palette(type_: u32) -> [u8; 768] {
+    if type_ == TYPE_PTR {
+        return PALETTE_PTR;
+    }
+    PALETTE_MAX1  // fallback palette to first game
 }
