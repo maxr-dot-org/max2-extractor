@@ -9,6 +9,7 @@ use crate::utils::buf_to_le_u32;
 // Asset header: 2 bytes + 2 bytes + 6 bytes
 const UNKNOWN_LEN: usize = 6;
 const HEADER_LEN: usize = 2 + 2 + UNKNOWN_LEN;
+const TYPE_PTR: u32 = 72;
 
 pub fn extract_img_asset(res_file: &mut File, dst_dir: &PathBuf, asset: &Asset) -> Result<bool> {
     let path = asset_path(dst_dir, asset);
@@ -27,20 +28,26 @@ pub fn extract_img_asset(res_file: &mut File, dst_dir: &PathBuf, asset: &Asset) 
     let width = buf_to_le_u32(&header[0..2]).unwrap();
     // Next two bytes is image height
     let height = buf_to_le_u32(&header[2..4]).unwrap();
+    // Remaining 6 bytes is metadata
+    let _origin_x = buf_to_le_u32(&header[4..6]).unwrap();
+    let _origin_y = buf_to_le_u32(&header[6..8]).unwrap();
+    let type_ = buf_to_le_u32(&header[8..10]).unwrap();
 
     // Read image data
     let data_len = (asset.length as usize) - HEADER_LEN;
     let mut image_data = vec![0u8;data_len];
-    res_file.read(&mut image_data);
+    res_file.read(&mut image_data).unwrap();
 
     // Create image
     let mut img: RgbaImage = ImageBuffer::new(width, height);
+
+    let transparent = transparent_pixel(type_);
 
     // Iterate over the coordinates and pixels of the image
     for (x, y, pixel) in img.enumerate_pixels_mut() {
         let src_pixel = (x + (y * width)) as usize;
         let color = image_data[src_pixel] as usize;
-        if color == 0 {
+        if color == transparent {
             *pixel = Rgba([0, 0, 0, 0]);
         } else {
             *pixel = Rgba([
@@ -63,4 +70,11 @@ fn asset_path(dst_dir: &PathBuf, asset: &Asset) -> PathBuf {
     path.push(&asset.name);
     path.set_extension("PNG");
     path
+}
+
+fn transparent_pixel(type_: u32) -> usize{
+    if type_ == TYPE_PTR {
+        return 224;
+    }
+    0
 }

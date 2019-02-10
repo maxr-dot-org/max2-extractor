@@ -122,21 +122,21 @@ fn extract_assets(res_file: &mut File, dst_dir: &PathBuf, assets: &Vec<Asset>) -
     for asset in assets {
         if asset.type_ == ASSET_BMP {
             if extract_bmp_asset(res_file, &dst_dir, &asset)? {
-                println!("Extracted: {}.BMP", asset.name);
+                //println!("Extracted: {}.BMP", asset.name);
             }
         } else if asset.type_ == ASSET_IMG {
             if extract_img_asset(res_file, &dst_dir, &asset)? && extract_raw_asset(res_file, &dst_dir, &asset)? {
-                println!("Extracted: {}.PNG", asset.name);
+                //println!("Extracted: {}.PNG", asset.name);
             }
         } else if asset.type_ == ASSET_STR || asset.type_ == ASSET_TXT {
             if extract_txt_asset(res_file, &dst_dir, &asset)? {
-                println!("Extracted: {}.TXT", asset.name);
+                //println!("Extracted: {}.TXT", asset.name);
             }
         } else {
             if extract_raw_asset(res_file, &dst_dir, &asset)? {
-                println!("Extracted: {}", asset.name);
+                //println!("Extracted: {}", asset.name);
             } else {
-                println!("Skipped: {}", asset.name);
+                //println!("Skipped: {}", asset.name);
             }
         }
     }
