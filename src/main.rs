@@ -10,6 +10,7 @@ use max2_extractor::extractbmp::extract_bmp_asset;
 use max2_extractor::extractimg::extract_img_asset;
 use max2_extractor::extractraw::extract_raw_asset;
 use max2_extractor::extracttxt::extract_txt_asset;
+use max2_extractor::palette::read_palettes;
 
 const FILE_HEADER: &str = "RES0";
 const RES_DIRNAME: &str = "res";
@@ -40,7 +41,7 @@ fn extract_res() -> Result<()> {
     }
 
     // Extract assets
-    extract_assets(&mut res_file, &dst_dir, &assets).unwrap();
+    extract_res_assets(&mut res_file, &dst_dir, &assets).unwrap();
 
     Ok(())
 }
@@ -58,7 +59,7 @@ fn extract_caf() -> Result<()> {
     }
 
     // Extract assets
-    extract_assets(&mut res_file, &dst_dir, &assets).unwrap();
+    extract_caf_assets(&mut res_file, &dst_dir, &assets).unwrap();
 
     Ok(())
 }
@@ -118,17 +119,37 @@ fn res0_assets(res_file: &mut File, assets: &mut Vec<Asset>) -> Result<()> {
     Ok(())
 }
 
-fn extract_assets(res_file: &mut File, dst_dir: &PathBuf, assets: &Vec<Asset>) -> Result<()> {
+fn extract_res_assets(res_file: &mut File, dst_dir: &PathBuf, assets: &Vec<Asset>) -> Result<()> {
+    let mut palettes: Vec<[u8; 768]> = Vec::new();
+    read_palettes(res_file, &mut palettes);
+
     for asset in assets {
         if asset.type_ == ASSET_BMP {
             if extract_bmp_asset(res_file, &dst_dir, &asset)? {
-                println!("Extracted: {}.BMP", asset.name);
+                println!("Extracted: {}.PNG", asset.name);
             }
         } else if asset.type_ == ASSET_IMG {
-            if extract_img_asset(res_file, &dst_dir, &asset)? && extract_raw_asset(res_file, &dst_dir, &asset)? {
+            if extract_img_asset(res_file, &dst_dir, &asset, &palettes)? {
                 println!("Extracted: {}.PNG", asset.name);
             }
         } else if asset.type_ == ASSET_STR || asset.type_ == ASSET_TXT {
+            if extract_txt_asset(res_file, &dst_dir, &asset)? {
+                println!("Extracted: {}.TXT", asset.name);
+            }
+        } else {
+            if extract_raw_asset(res_file, &dst_dir, &asset)? {
+                println!("Extracted: {}", asset.name);
+            } else {
+                println!("Skipped: {}", asset.name);
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn extract_caf_assets(res_file: &mut File, dst_dir: &PathBuf, assets: &Vec<Asset>) -> Result<()> {
+    for asset in assets {if asset.type_ == ASSET_STR || asset.type_ == ASSET_TXT {
             if extract_txt_asset(res_file, &dst_dir, &asset)? {
                 println!("Extracted: {}.TXT", asset.name);
             }

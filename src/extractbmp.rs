@@ -57,6 +57,6 @@ pub fn extract_bmp_asset(res_file: &mut File, dst_dir: &PathBuf, asset: &Asset) 
 fn asset_path(dst_dir: &PathBuf, asset: &Asset) -> PathBuf {
     let mut path = dst_dir.to_path_buf();
     path.push(&asset.name);
-    path.set_extension("BMP");
+    path.set_extension("PNG");  // PNG takes less space and is lossless too
     path
 }

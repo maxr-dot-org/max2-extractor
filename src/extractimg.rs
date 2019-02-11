@@ -3,15 +3,19 @@ use std::io::{Read, Result, Seek, SeekFrom};
 use std::path::PathBuf;
 use image::{ImageBuffer, Rgba, RgbaImage};
 use crate::assets::Asset;
-use crate::palette::{PALETTE_MAX1, PALETTE_PTR};
+use crate::palette::TRANSPARENT;
 use crate::utils::buf_to_le_u32;
 
 // Asset header: 2 bytes + 2 bytes + 6 bytes
 const UNKNOWN_LEN: usize = 6;
 const HEADER_LEN: usize = 2 + 2 + UNKNOWN_LEN;
-const TYPE_PTR: u32 = 72;
 
-pub fn extract_img_asset(res_file: &mut File, dst_dir: &PathBuf, asset: &Asset) -> Result<bool> {
+pub fn extract_img_asset(
+    res_file: &mut File,
+    dst_dir: &PathBuf,
+    asset: &Asset,
+    palettes: &Vec<[u8; 768]>
+) -> Result<bool> {
     let path = asset_path(dst_dir, asset);
     if path.is_file() {
         return Ok(false) // Skip file
@@ -28,10 +32,11 @@ pub fn extract_img_asset(res_file: &mut File, dst_dir: &PathBuf, asset: &Asset) 
     let width = buf_to_le_u32(&header[0..2]).unwrap();
     // Next two bytes is image height
     let height = buf_to_le_u32(&header[2..4]).unwrap();
-    // Remaining 6 bytes is metadata
+    // Next 4 bytes is origin pixel coords
     let _origin_x = buf_to_le_u32(&header[4..6]).unwrap();
     let _origin_y = buf_to_le_u32(&header[6..8]).unwrap();
-    let type_ = buf_to_le_u32(&header[8..10]).unwrap();
+    // Last two pixels is palette ID
+    let palette_id = buf_to_le_u32(&header[8..10]).unwrap() as usize;
 
     // Read image data
     let data_len = (asset.length as usize) - HEADER_LEN;
@@ -40,23 +45,24 @@ pub fn extract_img_asset(res_file: &mut File, dst_dir: &PathBuf, asset: &Asset) 
 
     // Create image
     let mut img: RgbaImage = ImageBuffer::new(width, height);
-
-    let transparent = transparent_pixel(type_);
-    let palette = &select_palette(type_);
+    // Find palette
+    let palette = &palettes[palette_id];
 
     // Iterate over the coordinates and pixels of the image
     for (x, y, pixel) in img.enumerate_pixels_mut() {
         let src_pixel = (x + (y * width)) as usize;
-        let color = image_data[src_pixel] as usize;
-        if color == transparent {
+        let palette_color = image_data[src_pixel] as usize;
+        let color = [
+            palette[(palette_color * 3)],
+            palette[(palette_color * 3) + 1],
+            palette[(palette_color * 3) + 2],
+            255
+        ];
+
+        if color == TRANSPARENT {
             *pixel = Rgba([0, 0, 0, 0]);
         } else {
-            *pixel = Rgba([
-                palette[(color * 3)],
-                palette[(color * 3) + 1],
-                palette[(color * 3) + 2],
-                255
-            ]);
+            *pixel = Rgba(color);
         }
     }
 
@@ -71,18 +77,4 @@ fn asset_path(dst_dir: &PathBuf, asset: &Asset) -> PathBuf {
     path.push(&asset.name);
     path.set_extension("PNG");
     path
-}
-
-fn transparent_pixel(type_: u32) -> usize {
-    if type_ == TYPE_PTR {
-        return 224;
-    }
-    0
-}
-
-fn select_palette(type_: u32) -> [u8; 768] {
-    if type_ == TYPE_PTR {
-        return PALETTE_PTR;
-    }
-    PALETTE_MAX1  // fallback palette to first game
 }
