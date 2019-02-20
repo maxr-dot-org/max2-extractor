@@ -1,184 +1,137 @@
 use std::env::current_dir;
+use std::error::Error;
 use std::fs::{File, create_dir_all};
-use std::io::{Read, Result, Seek, SeekFrom};
+use std::io;
+use std::iter::Iterator;
+use std::io::{Read, Seek, SeekFrom};
 use std::path::PathBuf;
-use std::str;
 use std::vec::Vec;
-use max2_extractor::assets::{Asset, find_assets};
-use max2_extractor::directories::{Directory, find_directories};
-use max2_extractor::extractbmp::extract_bmp_asset;
-use max2_extractor::extractimg::extract_img_asset;
-use max2_extractor::extractraw::extract_raw_asset;
-use max2_extractor::extracttxt::extract_txt_asset;
-use max2_extractor::palette::read_palettes;
 
-const FILE_HEADER: &str = "RES0";
-const RES_DIRNAME: &str = "res";
-const CAF_DIRNAME: &str = "caf";
+mod directory;
+mod palette;
+mod resfile;
+mod utils;
 
-const ASSET_BMP: u32 = 1;
-const ASSET_STR: u32 = 4;
-const ASSET_IMG: u32 = 5;
-const ASSET_TXT: u32 = 7;
-const ASSET_WAV: u32 = 8;
+use directory::{Directory, get_directory};
+use palette::render_palette;
+use resfile::open_res_file;
+use utils::buf_to_le_u32;
 
-fn main() -> Result<()> {
-    extract_res().expect("Failed to extract MAX2.RES");
-    extract_caf().expect("Failed to extract MAX2.CAF");
+fn main() -> Result<(), Box<dyn Error>> {
+    let mut max2_res = match open_res_file("MAX2.RES") {
+        Ok(file) => file,
+        Err(error) => {
+            panic!("Failed to open MAX2.RES: {:?}", error)
+        },
+    };
+
+    let mut max2_caf = match open_res_file("MAX2.CAF") {
+        Ok(file) => file,
+        Err(error) => {
+            panic!("Failed to open MAX2.CAF: {:?}", error)
+        },
+    };
+
+    let dst_path = match get_dst_path() {
+        Ok(dst_path) => dst_path,
+        Err(error) => {
+            panic!("Failed to find current directory: {:?}", error)
+        },
+    };
+
+    match create_dir_all(&dst_path) {
+        Ok(_) => (),
+        Err(error) => {
+            panic!("Failed to create \"extracted\" directory: {:?}", error)
+        },
+    };
+
+    match extract_max2_res(&dst_path, &mut max2_res) {
+        Ok(_) => (),
+        Err(error) => {
+            panic!("Failed to extract MAX2.RES: {:?}", error)
+        },
+    };
+
+    match extract_max2_caf(&dst_path, &mut max2_caf) {
+        Ok(_) => (),
+        Err(error) => {
+            panic!("Failed to extract MAX2.CAF: {:?}", error)
+        },
+    };
+
     Ok(())
 }
 
-fn extract_res() -> Result<()> {
-    let res_path = max2_res_path();
-    let mut assets: Vec<Asset> = Vec::new();
-    let mut res_file = res0_file(res_path).unwrap();
-    res0_assets(&mut res_file, &mut assets)?;
+fn get_dst_path() -> Result<PathBuf, io::Error> {
+    let mut path = current_dir()?;
+    path.push("extracted");
+    Ok(path)
+}
 
-    // Create output directory
-    let dst_dir = res_dst_path();
-    if !dst_dir.is_dir() {
-        create_dir_all(dst_dir.as_path())?
+fn extract_max2_res(
+    dst_path: &PathBuf, res_file: &mut File
+) -> Result<(), Box<dyn Error>> {
+    println!("Extracting MAX2.RES...");
+
+    let directory = get_directory(res_file)?;
+    let palettes = get_palettes(res_file, &directory)?;
+
+    extract_max2_res_palettes(dst_path, &palettes)?;
+
+    Ok(())
+}
+
+fn extract_max2_res_palettes(
+    dst_path: &PathBuf, palettes: &Vec<[u8; 768]>
+) -> Result<(), Box<dyn Error>> {
+    println!("Extracting {} palettes...", palettes.len());
+
+    let mut dst_path = dst_path.to_path_buf();
+    dst_path.push("palette");
+    create_dir_all(&dst_path)?;
+
+    for (i, &palette) in palettes.into_iter().enumerate() {
+        let mut palette_path = dst_path.to_path_buf();
+        palette_path.push(i.to_string().as_str());
+        palette_path.set_extension("PNG");
+        render_palette(&palette_path, &palette)?;
+        println!("Extracted palette #{}", i);
     }
 
-    // Extract assets
-    extract_res_assets(&mut res_file, &dst_dir, &assets).unwrap();
+    Ok(())
+}
+
+fn extract_max2_caf(
+    dst_path: &PathBuf, res_file: &mut File
+) -> Result<(), Box<dyn Error>> {
+    println!("Extracting MAX2.CAF...");
+
+    let directory = get_directory(res_file)?;
+    println!("{} {}", directory.offset, directory.length);
 
     Ok(())
 }
 
-fn extract_caf() -> Result<()> {
-    let res_path = max2_caf_path();
-    let mut assets: Vec<Asset> = Vec::new();
-    let mut res_file = res0_file(res_path).unwrap();
-    res0_assets(&mut res_file, &mut assets)?;
+pub fn get_palettes(
+    res_file: &mut File, directory: &Directory
+) -> Result<Vec<[u8; 768]>, Box<dyn Error>> {
+    // Palettes start right after directory's header
+    let palettes_offset = directory.offset + directory.length;
+    res_file.seek(SeekFrom::Start(palettes_offset))?;
 
-    // Create output directory
-    let dst_dir = caf_dst_path();
-    if !dst_dir.is_dir() {
-        create_dir_all(dst_dir.as_path())?
-    }
+    // Palettes list starts from 2 bytes with palettes count
+    let mut palettes_count = [0; 2];
+    res_file.read(&mut palettes_count)?;
+    let mut palettes_count = buf_to_le_u32(&palettes_count)? as usize;
 
-    // Extract assets
-    extract_caf_assets(&mut res_file, &dst_dir, &assets).unwrap();
-
-    Ok(())
-}
-
-fn max2_res_path() -> PathBuf {
-    let mut path = current_dir().expect("Failed to find CHDIR");
-    path.push("MAX2");
-    path.set_extension("RES");
-    path
-}
-
-fn res_dst_path() -> PathBuf {
-    let mut path = current_dir().expect("Failed to find CHDIR");
-    path.push(&RES_DIRNAME);
-    path
-}
-
-fn max2_caf_path() -> PathBuf {
-    let mut path = current_dir().expect("Failed to find CHDIR");
-    path.push("MAX2");
-    path.set_extension("CAF");
-    path
-}
-
-fn caf_dst_path() -> PathBuf {
-    let mut path = current_dir().expect("Failed to find CHDIR");
-    path.push(&CAF_DIRNAME);
-    path
-}
-
-fn res0_file(path: PathBuf) -> Result<File> {
-    if !path.is_file() {
-        let path_str = path.to_string_lossy().into_owned();
-        let error_message = format!("Could not find: {}", path_str);
-        panic!(error_message);
-    }
-
-    let path_str = path.to_string_lossy().into_owned();
-    let error_message = format!("Could not find: {}", path_str);
-    let mut res_file = File::open(path).expect(&error_message);
-    check_file_header(&mut res_file).unwrap();
-
-    Ok(res_file)
-}
-
-fn res0_assets(res_file: &mut File, assets: &mut Vec<Asset>) -> Result<()> {
-    // Jump to 6th byte where assets directory starts
-    res_file.seek(SeekFrom::Start(6)).unwrap();
-
-    // Find directories
-    let mut directories: Vec<Directory> = Vec::new();
-    find_directories(res_file, &mut directories)?;
-
-    // Find assets
-    find_assets(res_file, &directories, assets)?;
-
-    Ok(())
-}
-
-fn extract_res_assets(res_file: &mut File, dst_dir: &PathBuf, assets: &Vec<Asset>) -> Result<()> {
+    // Every palette is 3 * 256 bytes
     let mut palettes: Vec<[u8; 768]> = Vec::new();
-    read_palettes(res_file, &mut palettes);
-
-    for asset in assets {
-        if asset.type_ == ASSET_BMP {
-            if extract_bmp_asset(res_file, &dst_dir, &asset)? {
-                println!("Extracted: {}.PNG", asset.name);
-            }
-        } else if asset.type_ == ASSET_IMG {
-            if extract_img_asset(res_file, &dst_dir, &asset, &palettes)? {
-                println!("Extracted: {}.PNG", asset.name);
-            }
-        } else if asset.type_ == ASSET_STR || asset.type_ == ASSET_TXT {
-            if extract_txt_asset(res_file, &dst_dir, &asset)? {
-                println!("Extracted: {}.TXT", asset.name);
-            }
-        } else {
-            if extract_raw_asset(res_file, &dst_dir, &asset)? {
-                println!("Extracted: {}", asset.name);
-            } else {
-                println!("Skipped: {}", asset.name);
-            }
-        }
+    while palettes.len() < palettes_count {
+        let mut palette = [0; 768];
+        res_file.read(&mut palette)?;
+        palettes.push(palette);
     }
 
-    Ok(())
-}
-
-fn extract_caf_assets(res_file: &mut File, dst_dir: &PathBuf, assets: &Vec<Asset>) -> Result<()> {
-    for asset in assets {if asset.type_ == ASSET_STR || asset.type_ == ASSET_TXT {
-            if extract_txt_asset(res_file, &dst_dir, &asset)? {
-                println!("Extracted: {}.TXT", asset.name);
-            }
-        }  else if asset.type_ == ASSET_WAV {
-            // TODO: extract WAVs
-            if extract_raw_asset(res_file, &dst_dir, &asset)? {
-                println!("Extracted: {}", asset.name);
-            } else {
-                println!("Skipped: {}", asset.name);
-            }
-        } else {
-            if extract_raw_asset(res_file, &dst_dir, &asset)? {
-                println!("Extracted: {}", asset.name);
-            } else {
-                println!("Skipped: {}", asset.name);
-            }
-        }
-    }
-
-    Ok(())
-}
-
-fn check_file_header(res_file: &mut File) -> Result<()> {
-    // First 4 bytes should be "RES0" string
-    let mut buffer = [0; 4];
-    res_file.read(&mut buffer)?;
-
-    let header = str::from_utf8(&buffer).expect("Could not read header");
-    assert_eq!(header, FILE_HEADER, "Unrecognized file type");
-
-    Ok(())
+    Ok(palettes)
 }

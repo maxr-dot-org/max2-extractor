@@ -1,23 +1,28 @@
-use std::fs::File;
-use std::io::{Read, Seek, SeekFrom};
-use std::vec::Vec;
+use std::error::Error;
+use std::path::PathBuf;
+use image::{ImageBuffer, Rgb, RgbImage};
 
-// Transparent pixel color
-pub const TRANSPARENT: [u8; 4] = [247, 0, 247, 255];
-// Offset on which first palette begins in MAX2.RES
-const OFFSET: u64 = 36829628;
-// Total number of palettes in game
-const TOTAL_PALETTES: usize = 207;
-
-pub fn read_palettes(res_file: &mut File, palettes: &mut Vec<[u8; 768]>) {
-    // Jump to palettes start
-    res_file.seek(SeekFrom::Start(OFFSET)).unwrap();
-    // Palette
-    let mut loaded_palettes: usize = 0;
-    while loaded_palettes < TOTAL_PALETTES {
-        let mut palette = [0; 768];
-        res_file.read(&mut palette).unwrap();
-        palettes.push(palette);
-        loaded_palettes += 1;
+pub fn render_palette(
+    dst: &PathBuf, palette: &[u8; 768]
+) -> Result<bool, Box<dyn Error>> {
+    if dst.is_file() {
+        return Ok(false) // Skip file
     }
+
+    // Create 16x16 image (256 pixels total)
+    let mut img: RgbImage = ImageBuffer::new(16, 16);
+    // Iterate over the coordinates and pixels of the image
+    for (x, y, pixel) in img.enumerate_pixels_mut() {
+        let palette_color = (x + (y * 16)) as usize;
+        let color = [
+            palette[(palette_color * 3)],
+            palette[(palette_color * 3) + 1],
+            palette[(palette_color * 3) + 2]
+        ];
+        *pixel = Rgb(color);
+    }
+    // Save image file
+    img.save(dst)?;
+
+    Ok(true)
 }
