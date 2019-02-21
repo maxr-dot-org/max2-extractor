@@ -8,14 +8,29 @@ use std::path::PathBuf;
 use std::vec::Vec;
 
 mod directory;
+mod img;
+mod imgwithpalette;
 mod palette;
 mod resfile;
+mod text;
 mod utils;
 
-use directory::{Directory, get_directory};
+use directory::{Asset, Directory, get_directory};
+use img::extract_img;
+use imgwithpalette::extract_img_with_palette;
 use palette::render_palette;
 use resfile::open_res_file;
+use text::extract_txt;
 use utils::buf_to_le_u32;
+
+const ASSET_META_DATA: u32 = 0;
+const ASSET_IMG_WITH_PALETTE: u32 = 1;
+const ASSET_IMG_CONTAINER: u32 = 2;
+const ASSET_IMG_MONO_CONTAINER: u32 = 3;
+const ASSET_STR: u32 = 4;
+const ASSET_IMG: u32 = 5;
+const ASSET_TXT: u32 = 7;
+const ASSET_WAV: u32 = 8;
 
 fn main() -> Result<(), Box<dyn Error>> {
     let mut max2_res = match open_res_file("MAX2.RES") {
@@ -77,7 +92,11 @@ fn extract_max2_res(
     let directory = get_directory(res_file)?;
     let palettes = get_palettes(res_file, &directory)?;
 
-    extract_max2_res_palettes(dst_path, &palettes)?;
+    let mut dst_path = dst_path.to_path_buf();
+    dst_path.push("res");
+
+    extract_max2_res_palettes(&dst_path, &palettes)?;
+    extract_assets(&dst_path, res_file, &palettes, &directory.assets)?;
 
     Ok(())
 }
@@ -108,7 +127,6 @@ fn extract_max2_caf(
     println!("Extracting MAX2.CAF...");
 
     let directory = get_directory(res_file)?;
-    println!("{} {}", directory.offset, directory.length);
 
     Ok(())
 }
@@ -134,4 +152,40 @@ pub fn get_palettes(
     }
 
     Ok(palettes)
+}
+
+pub fn extract_assets(
+    dst_path: &PathBuf,
+    res_file: &mut File,
+    palettes: &Vec<[u8; 768]>,
+    assets: &Vec<Asset>
+) -> Result<(), Box<dyn Error>> {
+    for asset in assets {
+        // Assert that directory for type exists
+        let mut dst_type_path = dst_path.to_path_buf();
+        dst_type_path.push(asset.type_.to_string());
+        create_dir_all(&dst_type_path);
+
+        // Extract asset using type based algorithm
+        match asset.type_ {
+            ASSET_IMG_WITH_PALETTE => {
+                if extract_img_with_palette(res_file, &asset, &mut dst_type_path)? {
+                    println!("Extracted {}", asset.name)
+                }
+            },
+            ASSET_IMG => {
+                if extract_img(res_file, &palettes, &asset, &mut dst_type_path)? {
+                    println!("Extracted {}", asset.name)
+                }
+            }
+            ASSET_STR | ASSET_TXT => {
+                if extract_txt(res_file, &asset, &mut dst_type_path)? {
+                    println!("Extracted {}", asset.name)
+                }
+            },
+            _ => ()
+        }
+    }
+
+    Ok(())
 }
