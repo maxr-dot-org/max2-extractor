@@ -9,6 +9,7 @@ But I've always remembered it as insanely atmospheric vision of distant future, 
 
 This project is both nostalgia trip and Rust learning exercise.
 
+
 Usage
 -----
 
@@ -17,3 +18,9 @@ Build the executable and run it in directory containing the `MAX2.RES` and `MAX2
 Utility will create new directories named `res` and `caf`, and will extract files to it.
 
 Files in unknown formats will be extracted without extension.
+
+
+`RES` and `CAF` files
+-----------------
+
+`RES` and `CAF` files are both game asset package files.

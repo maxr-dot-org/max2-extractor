@@ -114,8 +114,9 @@ fn extract_max2_res_palettes(
         let mut palette_path = dst_path.to_path_buf();
         palette_path.push(i.to_string().as_str());
         palette_path.set_extension("PNG");
-        render_palette(&palette_path, &palette)?;
-        println!("Extracted palette #{}", i);
+        if render_palette(&palette_path, &palette)? {
+            println!("Extracted palette #{}", i);
+        }
     }
 
     Ok(())
@@ -141,7 +142,7 @@ pub fn get_palettes(
     // Palettes list starts from 2 bytes with palettes count
     let mut palettes_count = [0; 2];
     res_file.read(&mut palettes_count)?;
-    let mut palettes_count = buf_to_le_u32(&palettes_count)? as usize;
+    let palettes_count = buf_to_le_u32(&palettes_count)? as usize;
 
     // Every palette is 3 * 256 bytes
     let mut palettes: Vec<[u8; 768]> = Vec::new();
@@ -164,7 +165,7 @@ pub fn extract_assets(
         // Assert that directory for type exists
         let mut dst_type_path = dst_path.to_path_buf();
         dst_type_path.push(asset.type_.to_string());
-        create_dir_all(&dst_type_path);
+        create_dir_all(&dst_type_path)?;
 
         // Extract asset using type based algorithm
         match asset.type_ {
@@ -177,13 +178,13 @@ pub fn extract_assets(
                 if extract_img(res_file, &palettes, &asset, &mut dst_type_path)? {
                     println!("Extracted {}", asset.name)
                 }
-            }
+            },
             ASSET_STR | ASSET_TXT => {
                 if extract_txt(res_file, &asset, &mut dst_type_path)? {
                     println!("Extracted {}", asset.name)
                 }
             },
-            _ => ()
+            _ => (),
         }
     }
 

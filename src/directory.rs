@@ -54,7 +54,7 @@ fn get_directory_assets(
     res_file.seek(SeekFrom::Start(offset))?;
     // Read dictionary length
     let mut headers = vec![0u8; length as usize];
-    res_file.read(&mut headers);
+    res_file.read(&mut headers)?;
 
     // Create empty assets list
     let mut assets: Vec<Asset> = Vec::new();
