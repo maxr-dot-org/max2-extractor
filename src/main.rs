@@ -6,6 +6,7 @@ use std::iter::Iterator;
 use std::io::{Read, Seek, SeekFrom};
 use std::path::PathBuf;
 use std::vec::Vec;
+use glob::glob;
 
 mod directory;
 mod img;
@@ -13,9 +14,11 @@ mod imgcontainer;
 mod imgmonocontainer;
 mod imgwithpalette;
 mod palette;
+mod raw;
 mod resfile;
 mod text;
 mod utils;
+mod wld;
 
 use directory::{Asset, Directory, get_directory};
 use img::extract_img;
@@ -23,9 +26,11 @@ use imgcontainer::extract_img_container;
 use imgmonocontainer::extract_img_mono_container;
 use imgwithpalette::extract_img_with_palette;
 use palette::render_palette;
+use raw::extract_raw;
 use resfile::open_res_file;
 use text::extract_txt;
 use utils::buf_to_le_u32;
+use wld::extract_wld;
 
 const ASSET_META_DATA: u32 = 0;
 const ASSET_IMG_WITH_PALETTE: u32 = 1;
@@ -76,6 +81,13 @@ fn main() -> Result<(), Box<dyn Error>> {
         Ok(_) => (),
         Err(error) => {
             panic!("Failed to extract MAX2.CAF: {:?}", error)
+        },
+    };
+
+    match extract_wlds(&dst_path) {
+        Ok(_) => (),
+        Err(error) => {
+            panic!("Failed to extract *.WLD: {:?}", error)
         },
     };
 
@@ -132,6 +144,30 @@ fn extract_max2_caf(
     println!("Extracting MAX2.CAF...");
 
     let directory = get_directory(res_file)?;
+
+    let mut dst_path = dst_path.to_path_buf();
+    dst_path.push("caf");
+
+    for asset in directory.assets {
+        // Assert that directory for type exists
+        let mut dst_type_path = dst_path.to_path_buf();
+        dst_type_path.push(asset.type_.to_string());
+        create_dir_all(&dst_type_path)?;
+
+        // Extract asset using type based algorithm
+        match asset.type_ {
+            ASSET_STR | ASSET_TXT => {
+                if extract_txt(res_file, &asset, &mut dst_type_path)? {
+                    println!("Extracted {}", asset.name)
+                }
+            },
+            _ => {
+                if extract_raw(res_file, &asset, &mut dst_type_path)? {
+                    println!("Extracted {}", asset.name)
+                }
+            },
+        }
+    }
 
     Ok(())
 }
@@ -198,7 +234,35 @@ pub fn extract_assets(
                     println!("Extracted {}", asset.name)
                 }
             },
-            _ => (),
+            _ => {
+                if extract_raw(res_file, &asset, &mut dst_type_path)? {
+                    println!("Extracted {}", asset.name)
+                }
+            },
+        }
+    }
+
+    Ok(())
+}
+
+fn extract_wlds(dst_path: &PathBuf) -> Result<(), Box<dyn Error>> {
+    // Assert that directory for type exists
+    let mut dst_type_path = dst_path.to_path_buf();
+    dst_type_path.push("wld");
+    create_dir_all(&dst_type_path)?;
+
+    // Iterate WLD files in chdir
+    for wld_file in glob("*.WLD")? {
+        let mut wld_file = wld_file?;
+        let wld_file = wld_file.file_name();
+        if wld_file.is_some() {
+            let wld_file = wld_file.unwrap();
+            let mut wld_path = current_dir()?;
+            wld_path.push(wld_file);
+            if wld_path.is_file() {
+                println!("Extracting {}...", wld_file.to_string_lossy());
+                extract_wld(&mut wld_path, &mut dst_type_path)?;
+            }
         }
     }
 

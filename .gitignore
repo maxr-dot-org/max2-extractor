@@ -1,6 +1,7 @@
+**/*.rs.bk
+**/*.WLD
 /extracted
 /target
-**/*.rs.bk
 /caf
 /res
 /MAX2.CAF

@@ -100,7 +100,7 @@ fn extract_img_from_container(
             res_file.read(&mut header)?;
             // First byte is number of transparent pixels before color pixels
             let margin = header[0] as u32;
-            // If margin is 255, premature row end
+            // If margin is 255, row end is reached
             if margin == 255 {
                 break;
             }

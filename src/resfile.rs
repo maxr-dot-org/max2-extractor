@@ -1,8 +1,8 @@
 use std::env::current_dir;
+use std::error;
 use std::fs::File;
 use std::io::{Error, ErrorKind, Read};
 use std::path::PathBuf;
-use std::error;
 use std::str;
 
 const RES_FILE_HEADER: &str = "RES0";
