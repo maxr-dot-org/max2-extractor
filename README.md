@@ -13,14 +13,8 @@ This project is both nostalgia trip and Rust learning exercise.
 Usage
 -----
 
-Build the executable and run it in directory containing the `MAX2.RES` and `MAX2.CAF` files.
+Build the executable and run it in directory containing the `MAX2.RES`, `MAX2.CAF` and `*.WLD` files.
 
-Utility will create new directories named `res` and `caf`, and will extract files to it.
+Utility will create new directory named `extracted`, and will extract files to it.
 
 Files in unknown formats will be extracted without extension.
-
-
-`RES` and `CAF` files
------------------
-
-`RES` and `CAF` files are both game asset package files.
