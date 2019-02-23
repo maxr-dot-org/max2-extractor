@@ -96,7 +96,7 @@ pub fn extract_wld(
 
     // After rendering map data, skip palette and render sector types
     wld_file.seek(SeekFrom::Current(palette_length as i64))?;
-    render_sector_types(width, height, &chunk_order, &mut wld_file, &path)?;
+    render_sector_types(width, height, &mut wld_file, &path)?;
 
     Ok(true)
 }
@@ -280,7 +280,6 @@ const TYPE_SLOWST: u8 = 5;
 fn render_sector_types(
     width: u32,
     height: u32,
-    chunk_order: &Vec<u32>,
     wld_file: &mut File,
     path: &PathBuf
 ) -> Result<bool, Box<dyn error::Error>> {
@@ -298,6 +297,7 @@ fn render_sector_types(
     let quarter = (width_half * height_half) as usize;
     
     let mut img: RgbImage = ImageBuffer::new(width, height);
+
     // Typemap is split in four quarters
     for y_quarter in 0..2 {
         for x_quarter in 0..2 {
