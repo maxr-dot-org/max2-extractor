@@ -8,9 +8,8 @@ use image::{ImageBuffer, Rgba, RgbaImage};
 use super::directory::Asset;
 use super::utils::{buf_to_le_u32, buf_to_le_u64};
 
-pub fn extract_img_container(
+pub fn extract_img_mono_container(
     res_file: &mut File,
-    palettes: &Vec<[u8; 768]>,
     asset: &Asset,
     path: &mut PathBuf
 ) -> Result<bool, Box<dyn Error>> {
@@ -29,13 +28,7 @@ pub fn extract_img_container(
     res_file.read(&mut images_count)?;
     let images_count = buf_to_le_u32(&images_count)? as usize;
 
-    // Next two bytes of asset is palette id
-    let mut palette = [0;2];
-    res_file.read(&mut palette)?;
-    let palette = buf_to_le_u32(&palette)? as usize;
-    let palette = palettes[palette];
-
-    // Palette id is followed by list of image offsets
+    // Number of images is followed by list of image offsets
     // each offset is written with 4 bytes
     let mut images_offsets: Vec<u64> = Vec::new();
     while images_offsets.len() < images_count {
@@ -54,7 +47,7 @@ pub fn extract_img_container(
         // If file doesnt exist, extract it
         if !img_path.is_file() {
             extract_img_from_container(
-                res_file, palette, asset.offset, image_offset, img_path
+                res_file, asset.offset, image_offset, img_path
             )?;
         }
     }
@@ -64,7 +57,6 @@ pub fn extract_img_container(
 
 fn extract_img_from_container(
     res_file: &mut File,
-    palette: [u8; 768],
     asset_offset: u64,
     img_offset: u64,
     path: PathBuf
@@ -114,22 +106,15 @@ fn extract_img_from_container(
             }
 
             // Second byte is number of color pixels
-            let data_len = header[1] as usize;
+            let mut data_len = header[1] as usize;
             // Skip transparent pixels
             x += margin;
-            // Read color pixels
-            let mut colors = vec![0u8;data_len];
-            res_file.read(&mut colors)?;
-            for color in colors {
-                let color = color as usize;
+            // Draw color pixels
+            while data_len > 0 {
                 let pixel = img.get_pixel_mut(x as u32, y as u32);
-                *pixel = Rgba([
-                    palette[(color * 3)],
-                    palette[(color * 3) + 1],
-                    palette[(color * 3) + 2],
-                    255
-                ]);
+                *pixel = Rgba([0, 0, 0, 255]);
                 x += 1;
+                data_len -= 1;
             }
         }
     }

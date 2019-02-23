@@ -10,6 +10,7 @@ use std::vec::Vec;
 mod directory;
 mod img;
 mod imgcontainer;
+mod imgmonocontainer;
 mod imgwithpalette;
 mod palette;
 mod resfile;
@@ -19,6 +20,7 @@ mod utils;
 use directory::{Asset, Directory, get_directory};
 use img::extract_img;
 use imgcontainer::extract_img_container;
+use imgmonocontainer::extract_img_mono_container;
 use imgwithpalette::extract_img_with_palette;
 use palette::render_palette;
 use resfile::open_res_file;
@@ -178,6 +180,11 @@ pub fn extract_assets(
             },
             ASSET_IMG_CONTAINER => {
                 if extract_img_container(res_file, &palettes, &asset, &mut dst_type_path)? {
+                    println!("Extracted {}", asset.name)
+                }
+            },
+            ASSET_IMG_MONO_CONTAINER => {
+                if extract_img_mono_container(res_file, &asset, &mut dst_type_path)? {
                     println!("Extracted {}", asset.name)
                 }
             },
