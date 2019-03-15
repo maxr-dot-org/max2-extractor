@@ -8,6 +8,7 @@ use std::path::PathBuf;
 use std::vec::Vec;
 use glob::glob;
 
+mod acm;
 mod directory;
 mod img;
 mod imgcontainer;
@@ -20,6 +21,7 @@ mod text;
 mod utils;
 mod wld;
 
+use acm::extract_acm;
 use directory::{Asset, Directory, get_directory};
 use img::extract_img;
 use imgcontainer::extract_img_container;
@@ -39,7 +41,7 @@ const ASSET_IMG_MONO_CONTAINER: u32 = 3;
 const ASSET_STR: u32 = 4;
 const ASSET_IMG: u32 = 5;
 const ASSET_TXT: u32 = 7;
-const ASSET_WAV: u32 = 8;
+const ASSET_ACM: u32 = 8;
 
 fn main() -> Result<(), Box<dyn Error>> {
     let mut max2_res = match open_res_file("MAX2.RES") {
@@ -158,6 +160,11 @@ fn extract_max2_caf(
         match asset.type_ {
             ASSET_STR | ASSET_TXT => {
                 if extract_txt(res_file, &asset, &mut dst_type_path)? {
+                    println!("Extracted {}", asset.name)
+                }
+            },
+            ASSET_ACM => {
+                if extract_acm(res_file, &asset, &mut dst_type_path)? {
                     println!("Extracted {}", asset.name)
                 }
             },
