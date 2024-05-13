@@ -34,6 +34,7 @@ use text::extract_txt;
 use utils::buf_to_le_u32;
 use wld::extract_wld;
 
+// const ASSET_METADATA: u32 = 0; - Not used in M.A.X 2
 const ASSET_IMG_WITH_PALETTE: u32 = 1;
 const ASSET_IMG_CONTAINER: u32 = 2;
 const ASSET_IMG_MONO_CONTAINER: u32 = 3;
