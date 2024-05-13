@@ -15,7 +15,7 @@ pub fn render_palette(
     for (x, y, pixel) in img.enumerate_pixels_mut() {
         let palette_color = (x + (y * 16)) as usize;
         let color = [
-            palette[(palette_color * 3)],
+            palette[palette_color * 3],
             palette[(palette_color * 3) + 1],
             palette[(palette_color * 3) + 2]
         ];

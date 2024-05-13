@@ -124,7 +124,7 @@ fn extract_img_from_container(
                 let color = color as usize;
                 let pixel = img.get_pixel_mut(x as u32, y as u32);
                 *pixel = Rgba([
-                    palette[(color * 3)],
+                    palette[color * 3],
                     palette[(color * 3) + 1],
                     palette[(color * 3) + 2],
                     255

@@ -61,7 +61,7 @@ pub fn extract_img(
         let src_pixel = (x + (y * width)) as usize;
         let palette_color = image_data[src_pixel] as usize;
         let color = [
-            palette[(palette_color * 3)],
+            palette[palette_color * 3],
             palette[(palette_color * 3) + 1],
             palette[(palette_color * 3) + 2],
             255

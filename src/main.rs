@@ -34,7 +34,6 @@ use text::extract_txt;
 use utils::buf_to_le_u32;
 use wld::extract_wld;
 
-const ASSET_META_DATA: u32 = 0;
 const ASSET_IMG_WITH_PALETTE: u32 = 1;
 const ASSET_IMG_CONTAINER: u32 = 2;
 const ASSET_IMG_MONO_CONTAINER: u32 = 3;
@@ -260,7 +259,7 @@ fn extract_wlds(dst_path: &PathBuf) -> Result<(), Box<dyn Error>> {
 
     // Iterate WLD files in chdir
     for wld_file in glob("*.WLD")? {
-        let mut wld_file = wld_file?;
+        let wld_file = wld_file?;
         let wld_file = wld_file.file_name();
         if wld_file.is_some() {
             let wld_file = wld_file.unwrap();

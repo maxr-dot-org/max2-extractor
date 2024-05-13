@@ -169,7 +169,7 @@ fn render_palette(
     for (x, y, pixel) in img.enumerate_pixels_mut() {
         let palette_color = (x + (y * 16)) as usize;
         let color = [
-            palette[(palette_color * 3)],
+            palette[palette_color * 3],
             palette[(palette_color * 3) + 1],
             palette[(palette_color * 3) + 2]
         ];
@@ -201,7 +201,7 @@ fn render_minimap(
         let color = (x + (y * width)) as usize;
         let color = minimap[color] as usize;
         let color = [
-            palette[(color * 3)],
+            palette[color * 3],
             palette[(color * 3) + 1],
             palette[(color * 3) + 2]
         ];
@@ -254,7 +254,7 @@ fn render_map(
                 let offset = (x + (y * sector)) as usize;
                 let color = data[offset] as usize;
                 let color = [
-                    palette[(color * 3)],
+                    palette[color * 3],
                     palette[(color * 3) + 1],
                     palette[(color * 3) + 2]
                 ];
@@ -291,7 +291,6 @@ fn render_sector_types(
         return Ok(false);
     }
 
-    let length = (width * height) as usize;
     let width_half = (width / 2) as u32;
     let height_half = (height / 2) as u32;
     let quarter = (width_half * height_half) as usize;
